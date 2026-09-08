@@ -1,0 +1,4 @@
+session_id,timestamp,src_ip,dst_ip,ip_subnet,bytes_sent,user_id,actor_name
+IPDR_5001,2026-09-01T10:07:00Z,192.168.10.45,172.217.14.206,192.168.10.0/24,1048576,usr_sroger,Sam R. X
+IPDR_5002,2026-09-01T10:22:00Z,172.16.50.18,142.250.190.46,172.16.50.0/24,512000,usr_bob_b,Bob Household-B
+IPDR_BAD_1,2026-09-01T10:35:00Z,999.888.777.666,142.250.190.46,invalid_subnet,100,usr_bad_ip,Bad IP Format

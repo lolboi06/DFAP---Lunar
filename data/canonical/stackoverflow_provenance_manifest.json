@@ -1,0 +1,51 @@
+{
+  "dataset_key": "stackoverflow",
+  "name": "Stack Overflow Temporal Interaction Network",
+  "version": "1.0-temporal",
+  "domain": "SOCIAL",
+  "source_url": "https://snap.stanford.edu/data/sx-stackoverflow-c2q.txt.gz",
+  "license": "Stanford Network Analysis Project (SNAP) Public Domain / CC0",
+  "citation": "Paranjape et al., 'Motifs in Temporal Networks', WSDM 2017",
+  "provenance_tier": "REAL_PUBLIC_DATA",
+  "ingestion_mode": "BOUNDED",
+  "requested_max_records": 10000,
+  "raw_record_count": 20000,
+  "processed_record_count": 10000,
+  "canonical_record_count": 10000,
+  "canonical_records_count": 10000,
+  "acquisition_timestamp": "2026-09-03T05:38:53.131382+00:00",
+  "source_files": [
+    "data/sources/stackoverflow/sx_stackoverflow_c2q.txt"
+  ],
+  "source_file_hashes": {
+    "sx_stackoverflow_c2q.txt": "10808eb3e092d29e2b93a15de4b8782e009d48fe3d23477f4b173c62399dafc2"
+  },
+  "canonical_sha256": "11e9189519e12bb4eca327afc91ddc7f7419c23e0a9d6488ff127a1a634976a6",
+  "time_range": "2008-09-06T19:26:30+00:00 -> 2008-11-07T04:01:49+00:00",
+  "schema_fingerprint": {
+    "columns": [
+      "src_user_id",
+      "dst_user_id",
+      "timestamp"
+    ],
+    "dtypes": {
+      "src_user_id": "int64",
+      "dst_user_id": "int64",
+      "timestamp": "int64"
+    }
+  },
+  "row_accountability": {
+    "source_file": "data/sources/stackoverflow/sx_stackoverflow_c2q.txt",
+    "ingestion_mode": "BOUNDED",
+    "source_total_records": 20000,
+    "requested_max_records": 10000,
+    "processed_source_records": 10000,
+    "source_rows": 10000,
+    "accepted_rows": 10000,
+    "rejected_rows": 0,
+    "is_accountable": true,
+    "rejection_breakdown": {},
+    "sample_rejections": []
+  },
+  "provenance_manifest_path": "data/canonical/stackoverflow_provenance_manifest.json"
+}

@@ -1,0 +1,265 @@
+index_html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFAP Professional Investigation Workspace</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="saas-mode app-locked lang-en theme-cyberpunk">
+
+    <!-- LIVE BACKGROUND -->
+    <div class="live-bg"></div>
+
+    <!-- 1. SPLASH SCREEN -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-particles"></div>
+        <div class="splash-logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="splash-icon">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+            <h1 class="splash-title">DFAP INVESTIGATION WORKSPACE</h1>
+            <div class="splash-loading-bar"><div class="splash-progress"></div></div>
+        </div>
+    </div>
+
+    <!-- 2. AUTHENTICATION OVERLAY -->
+    <div id="auth-overlay" class="auth-overlay hidden">
+        <div class="auth-backdrop"></div>
+        
+        <div class="lang-selector-container auth-lang">
+            <label for="auth-theme-select" class="lang-icon">🎨 Theme</label>
+            <select id="auth-theme-select" class="lang-select theme-select" onchange="changeTheme(this.value)">
+                <option value="cyberpunk">Cyberpunk</option>
+                <option value="aurora">Aurora Borealis</option>
+                <option value="neon">Neon Wave</option>
+                <option value="sunset">Solar Sunset</option>
+                <option value="wine">Wine & Sand</option>
+            </select>
+            <label for="auth-lang-select" class="lang-icon ml-2" style="margin-left:12px;">🌐 Language</label>
+            <select id="auth-lang-select" class="lang-select" onchange="changeLanguage(this.value)">
+                <option value="en">English</option>
+                <option value="pa">ਪੰਜਾਬੀ</option>
+                <option value="hi">हिन्दी</option>
+            </select>
+        </div>
+
+        <div class="auth-box" id="auth-box">
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-type="official" id="tab-official">Official Access</div>
+                <div class="auth-tab" data-type="public" id="tab-public">Public Audit</div>
+                <div class="tab-highlight" id="tab-highlight"></div>
+            </div>
+
+            <div class="auth-form-container">
+                <h2 id="auth-title">Investigator Terminal</h2>
+                <p class="grey-text" id="auth-subtitle">Authorized law enforcement & intelligence personnel only.</p>
+
+                <form id="auth-form" onsubmit="event.preventDefault();">
+                    <div class="input-group">
+                        <input type="text" id="auth-email" value="inv-001@dfap.gov" required>
+                        <label for="auth-email">Investigator Credential ID</label>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="auth-password" value="••••••••••••" required>
+                        <label for="auth-password">Cryptographic Session Key</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large btn-auth-submit" id="btn-auth-submit">
+                        <span class="submit-text">Enter Workspace</span>
+                        <span class="submit-spinner hidden"><svg viewBox="0 0 24 24" width="20" height="20" class="spinner"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="31 31" stroke-linecap="round"></circle></svg></span>
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <span class="grey-text" style="font-size: 11px;">M13 Authoritative Workspace • Strict Non-Culpability Controls Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MAIN INVESTIGATION WORKSPACE -->
+    <main id="main-app" class="main-app hidden">
+        
+        <!-- TOP APP HEADER -->
+        <nav class="saas-nav" id="main-nav" style="gap: 16px; padding: 0 20px;">
+            <div class="nav-logo" style="display: flex; align-items: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--cyan)" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                <span style="font-weight: 700; letter-spacing: 0.5px;">DFAP WORKSPACE</span>
+            </div>
+
+            <!-- ACTIVE CASE & ENTITY SELECTOR -->
+            <div style="display: flex; align-items: center; gap: 12px; margin-left: 8px;">
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--panel-border); padding: 4px 10px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                    <span class="grey-text" style="font-size: 10px;">CASE:</span>
+                    <select id="header-case-select" style="background: transparent; color: var(--cyan); border: none; font-weight: 600; font-family: 'JetBrains Mono', monospace; outline: none; cursor: pointer;">
+                        <option value="CASE-DFAP-4DOMAIN-001">CASE-DFAP-4DOMAIN-001</option>
+                    </select>
+                </div>
+                <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--panel-border); padding: 4px 10px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                    <span class="grey-text" style="font-size: 10px;">ENTITY:</span>
+                    <span id="header-entity-display" class="cyan-text font-bold" style="font-family: 'JetBrains Mono', monospace;">ENT_DFAP_4DOM_001</span>
+                </div>
+            </div>
+
+            <!-- GLOBAL NATURAL LANGUAGE SEARCH -->
+            <div style="flex: 1; max-width: 360px; margin: 0 10px;">
+                <input type="text" id="global-search-input" class="global-search-box" placeholder="Natural-language search (e.g. Find Rahul Sharma)..." style="width: 100%;">
+            </div>
+
+            <!-- LIVE SYSTEM & SECURITY STATUS PILLS -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="pill-backend" class="badge success" style="font-size: 10px;">BACKEND: ONLINE</span>
+                <span id="pill-ollama" class="badge success" style="font-size: 10px;">OLLAMA: qwen3:4b</span>
+                <span id="pill-ldrm" class="badge cyan" style="font-size: 10px;">LDRM: READY</span>
+                <span id="pill-conflict" class="badge warning font-bold" style="font-size: 10px; animation: pulse 2s infinite;">CONFLICT: HUMAN REVIEW</span>
+            </div>
+
+            <div class="nav-actions" style="display: flex; align-items: center; gap: 10px;">
+                <div class="lang-selector-container nav-lang">
+                    <select id="nav-theme-select" class="lang-select theme-select" onchange="changeTheme(this.value)">
+                        <option value="cyberpunk">Cyberpunk</option>
+                        <option value="aurora">Aurora</option>
+                        <option value="neon">Neon</option>
+                        <option value="sunset">Sunset</option>
+                        <option value="wine">Wine</option>
+                    </select>
+                    <select id="nav-lang-select" class="lang-select ml-2" onchange="changeLanguage(this.value)" style="margin-left: 6px;">
+                        <option value="en">EN</option>
+                        <option value="pa">ਪੰ</option>
+                        <option value="hi">हिं</option>
+                    </select>
+                </div>
+                <div id="active-role-display" class="cyan-text text-sm" style="font-size: 11px; white-space: nowrap;">OFFICER: INV-001 (Supervisory)</div>
+            </div>
+        </nav>
+
+        <div class="app-container">
+            <!-- SIDEBAR NAVIGATION -->
+            <aside class="saas-sidebar" id="saas-sidebar" style="width: 250px; overflow-y: auto;">
+                <div class="sidebar-menu">
+                    <div class="menu-label">INVESTIGATION & CASES</div>
+                    <a href="#" class="menu-item active" data-target="dashboard">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        <span>Dashboard Overview</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="cases">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Case Management</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="entities">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>Entities & Identity</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="timeline">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                        <span>Unified Timeline</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="evidence">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        <span>Cross-Domain Evidence</span>
+                    </a>
+
+                    <div class="menu-label mt-4">GRAPH & INTELLIGENCE</div>
+                    <a href="#" class="menu-item" data-target="graph">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                        <span>Relationship Graph</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="behavior">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        <span>Behavior & Anomaly</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="temporal">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>Temporal Motifs (M10)</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="conflicts">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 22 22 22"></polygon><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        <span>Evidential Conflict (M11)</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="explainability">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        <span>Explainability / SHAP</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="risk">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        <span>Risk & Triage (M13)</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="graphml">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        <span>Graph ML (SAGE/TGN)</span>
+                    </a>
+
+                    <div class="menu-label mt-4">FORENSICS & AI</div>
+                    <a href="#" class="menu-item" data-target="forensic">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        <span>Forensic Case Packet</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="narratives">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        <span>Narrative Generation</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="copilot">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                        <span>Agentic Copilot</span>
+                    </a>
+
+                    <div class="menu-label mt-4">OPERATIONS & COMPLIANCE</div>
+                    <a href="#" class="menu-item" data-target="ldrm">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        <span>LDRM Gateway</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="provenance">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                        <span>Provenance & Custody</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="decisionlog">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>Decision Log (Event Sourced)</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="translate">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                        <span>Regional Translation</span>
+                    </a>
+                    <a href="#" class="menu-item" data-target="health">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                        <span>System Health</span>
+                    </a>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT AREA -->
+            <section class="app-content" id="app-content" style="flex: 1; overflow-y: auto; padding: 24px;">
+                <div id="module-container" class="view-panel glass-panel" style="min-height: 100%; border-radius: 12px; padding: 24px; position: relative;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                        <div>
+                            <h2 id="module-title" class="cyan-text text-xl" style="margin: 0; font-size: 24px;">Dashboard Overview</h2>
+                            <p id="module-desc" class="grey-text mt-1" style="font-size: 13px;">Real-time investigation workspace status and cross-domain intelligence metrics.</p>
+                        </div>
+                        <div id="module-actions" style="display: flex; gap: 8px;"></div>
+                    </div>
+
+                    <!-- DYNAMIC MODULE INJECTION POINT -->
+                    <div id="module-injection-point" class="injection-area">
+                        <!-- Content rendered dynamically by app.js -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="i18n.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+"""
+
+with open("frontend/chandiger hackathon/dfap-prototype/frontend/index.html", "w") as f:
+    f.write(index_html)
+print("Updated index.html written successfully!")

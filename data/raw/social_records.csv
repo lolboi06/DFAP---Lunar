@@ -1,0 +1,3 @@
+post_id,timestamp,user_handle,target_handle,platform,actor_name,ip_subnet,device_id
+SOC_7001,2026-09-01T10:02:00,@alex_vance_official,@tech_news,X/Twitter,Alexander Vance,192.168.10.0/24,DEV_APPLE_9823
+SOC_7002,2026-09-01T10:18:00,@mwright_sec,@cyber_daily,LinkedIn,Marcus Wright,10.200.5.0/24,DEV_ANDROID_1120

@@ -1,0 +1,251 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DFAP — Provider Integration Readiness</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/ldrm-console/static/console.css">
+<div id="banners"></div>
+<header>
+  <h1>DFAP — Provider Integration Readiness</h1>
+  <nav class="row"><a href="/ldrm-console/investigator">Investigator</a>
+  <a href="/provider-console">Provider</a></nav>
+  <div class="spacer"></div>
+  <div class="row" id="tokenbar"></div>
+</header>
+<main>
+  <div id="verdict"></div>
+  <div class="grid" id="tiles"></div>
+
+  <section>
+    <h2>Provider integrations</h2>
+    <div class="wrap"><table>
+      <thead><tr>
+        <th>Provider</th><th>Environment</th><th>Submission</th><th>Response</th>
+        <th>Status</th><th>Endpoint</th><th>Auth</th><th>Certificate</th>
+        <th>Last contract test</th><th>Security</th><th>Agency</th><th>Provider</th>
+        <th>Expires</th><th>Actions</th>
+      </tr></thead>
+      <tbody id="integrations"><tr><td colspan="14" class="muted">Connect to load.</td></tr></tbody>
+    </table></div>
+    <p class="muted" style="font-size:12px">Actions are RBAC controlled and enforced in the backend.
+    No action here skips a lifecycle requirement: activation re-runs every production prerequisite
+    and refuses if any is unmet.</p>
+  </section>
+
+  <section>
+    <h2>Certificates</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Reference</th><th>Type</th><th>Environment</th><th>Issuer</th>
+      <th>Fingerprint</th><th>Valid until</th><th>Status</th></tr></thead>
+      <tbody id="certificates"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Verified endpoint allowlist</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Provider</th><th>Environment</th><th>URL</th><th>Verified by</th><th>Active</th></tr></thead>
+      <tbody id="allowlist"></tbody>
+    </table></div>
+    <p class="muted" style="font-size:12px">Only these destinations may be used. A request creator can
+    never supply a provider URL.</p>
+  </section>
+
+  <section>
+    <h2>Recent failures</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Event</th><th>Entity</th><th>When</th><th>Reason</th></tr></thead>
+      <tbody id="failures"></tbody>
+    </table></div>
+  </section>
+</main>
+<div id="toast"></div>
+<dialog id="dialog"><form method="dialog" id="dialogForm"></form></dialog>
+
+<script src="/ldrm-console/static/console.js"></script>
+<script>
+const LIFECYCLE = ['DRAFT','DOCUMENTATION_VERIFIED','SANDBOX_CONFIGURED','CONTRACT_TESTED',
+                   'SECURITY_REVIEWED','AGENCY_APPROVED','PROVIDER_APPROVED','PRODUCTION_ACTIVE'];
+
+function steps(current) {
+  const index = LIFECYCLE.indexOf(current);
+  return `<div class="steps">${LIFECYCLE.map((s, i) => {
+    const cls = i < index ? 'done' : (i === index ? 'current' : '');
+    return `<span class="step ${cls}" title="${s}">${s.split('_')[0].slice(0,4)}</span>`;
+  }).join('')}</div>`;
+}
+
+function ask(title, fields, onSubmit) {
+  const dialog = document.getElementById('dialog');
+  const form = document.getElementById('dialogForm');
+  form.innerHTML = `<h3 style="margin-top:0">${escapeHtml(title)}</h3>` +
+    fields.map(f => `<label>${escapeHtml(f.label)}</label>` +
+      (f.type === 'textarea'
+        ? `<textarea name="${f.name}" rows="3"></textarea>`
+        : `<input name="${f.name}" value="${escapeHtml(f.value || '')}">`)).join('') +
+    `<div class="row" style="margin-top:16px"><div class="spacer"></div>
+     <button value="cancel">Cancel</button>
+     <button value="ok" class="primary">Confirm</button></div>`;
+  dialog.showModal();
+  form.onsubmit = () => {
+    if (form.returnValue === 'cancel') return;
+    const data = {};
+    fields.forEach(f => { data[f.name] = form.elements[f.name].value; });
+    onSubmit(data);
+  };
+}
+
+async function act(fn, success) {
+  try { await fn(); toast(success, 'ok'); await load(); }
+  catch (error) { toast(error.message, 'err'); }
+}
+
+function actionsFor(profile) {
+  const id = profile.integration_profile_id;
+  const dead = ['REVOKED'].includes(profile.integration_status);
+  const buttons = [
+    `<button data-a="validate" data-id="${id}">Validate</button>`,
+    `<button data-a="tests" data-id="${id}" ${profile.environment === 'PRODUCTION' ? 'disabled title="Contract tests never run against production"' : ''}>Contract tests</button>`,
+    `<button data-a="review" data-id="${id}">Security review</button>`,
+    `<button data-a="approve" data-id="${id}">Approve</button>`,
+    `<button data-a="suspend" data-id="${id}">Suspend</button>`,
+    `<button data-a="revoke" data-id="${id}">Revoke</button>`,
+  ];
+  return `<div class="row" style="gap:4px">${dead ? '<span class="muted">revoked</span>' : buttons.join('')}</div>`;
+}
+
+async function load() {
+  const [readiness, integrations, certificates, allowlist, health] = await Promise.all([
+    api.get('/readiness'), api.get('/integrations'), api.get('/certificates'),
+    api.get('/endpoint-allowlist'), api.get('/health/integrations'),
+  ]);
+
+  const c = readiness.counts;
+  const tiles = [
+    ['Providers', c.providers, ''], ['Verified', c.providers_verified, 'good'],
+    ['Mock active', c.mock_active, ''], ['Sandbox configured', c.sandbox_configured, ''],
+    ['Contract tested', c.contract_tested, ''], ['Security reviewed', c.security_reviewed, ''],
+    ['Agency approved', c.agency_approved, ''], ['Provider approved', c.provider_approved, ''],
+    ['Production active', c.production_active, c.production_active ? 'bad' : 'good'],
+    ['Suspended', c.suspended, c.suspended ? 'alert' : ''],
+    ['Certificates expiring', c.certificates_expiring, c.certificates_expiring ? 'alert' : ''],
+    ['Failed contract tests', c.failed_contract_tests, c.failed_contract_tests ? 'alert' : ''],
+    ['Quarantined responses', c.quarantined_responses, c.quarantined_responses ? 'alert' : ''],
+  ];
+  document.getElementById('tiles').innerHTML = tiles.map(([label, n, kind]) =>
+    `<div class="tile ${kind}"><div class="n">${n}</div><div class="l">${label}</div></div>`).join('');
+
+  const safe = readiness.safe_to_operate;
+  document.getElementById('verdict').innerHTML =
+    `<div class="note ${safe.production_dispatch_disabled ? '' : 'warn'}">
+       <strong>${escapeHtml(safe.verdict)}</strong>
+       <div class="muted" style="margin-top:4px">${escapeHtml(readiness.production_dispatch.reason || '')}</div>
+       ${safe.concerns.length ? `<ul class="blockers">${safe.concerns.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>` : ''}
+     </div>`;
+
+  const certByRef = Object.fromEntries(certificates.map(x => [x.certificate_reference, x]));
+  document.getElementById('integrations').innerHTML = integrations.length ? integrations.map(p => {
+    const cert = certByRef[p.client_certificate_reference] || certByRef[p.signing_certificate_reference];
+    const certCell = cert
+      ? pill(new Date(cert.valid_until) > new Date() ? cert.status : 'EXPIRED',
+             new Date(cert.valid_until) > new Date() && cert.status === 'ACTIVE' ? 'ok' : 'bad')
+      : '<span class="muted">none</span>';
+    return `<tr>
+      <td class="mono">${escapeHtml(p.provider_id)}${steps(p.integration_status)}</td>
+      <td>${pill(p.environment, ENV_KIND[p.environment] || '')}</td>
+      <td>${escapeHtml(p.submission_method)}</td>
+      <td>${escapeHtml(p.response_method)}</td>
+      <td>${pill(p.integration_status, STATUS_KIND[p.integration_status] || '')}</td>
+      <td>${pill(p.endpoint_verification_status, p.endpoint_verification_status === 'VERIFIED' ? 'ok' : 'warn')}</td>
+      <td>${escapeHtml(p.authentication_type)}</td>
+      <td>${certCell}</td>
+      <td id="ct-${p.integration_profile_id}" class="muted">—</td>
+      <td id="sr-${p.integration_profile_id}" class="muted">—</td>
+      <td id="ag-${p.integration_profile_id}" class="muted">—</td>
+      <td id="pr-${p.integration_profile_id}" class="muted">—</td>
+      <td class="muted">${p.expires_at ? escapeHtml(p.expires_at.slice(0, 10)) : '—'}</td>
+      <td>${actionsFor(p)}</td></tr>`;
+  }).join('') : '<tr><td colspan="14" class="muted">No provider integration profiles configured.</td></tr>';
+
+  // Approval and certification detail, loaded per integration.
+  for (const p of integrations) {
+    const id = p.integration_profile_id;
+    try {
+      const detail = await api.get('/integrations/' + encodeURIComponent(id));
+      const a = detail.approvals || {};
+      const set = (prefix, key) => {
+        const cell = document.getElementById(prefix + '-' + id);
+        if (cell) cell.innerHTML = a[key]
+          ? pill('recorded', 'ok') + ` <span class="muted mono">${escapeHtml(a[key].reference)}</span>`
+          : pill('missing', 'warn');
+      };
+      set('sr', 'SECURITY_REVIEW'); set('ag', 'AGENCY_APPROVAL'); set('pr', 'PROVIDER_APPROVAL');
+      const latest = (detail.certifications || [])[0];
+      const cell = document.getElementById('ct-' + id);
+      if (cell) cell.innerHTML = latest
+        ? pill(latest.result, latest.result === 'PASS' ? 'ok' : 'warn') +
+          `<div class="muted" style="font-size:11px">${escapeHtml(latest.tested_at.slice(0,10))} · ${latest.tests_passed}P/${latest.tests_failed}F</div>`
+        : '<span class="muted">never</span>';
+    } catch { /* per-row detail is advisory */ }
+  }
+
+  document.getElementById('certificates').innerHTML = certificates.map(c => `<tr>
+    <td class="mono">${escapeHtml(c.certificate_reference)}</td>
+    <td>${escapeHtml(c.certificate_type)}</td>
+    <td>${pill(c.environment, ENV_KIND[c.environment] || '')}</td>
+    <td>${escapeHtml(c.issuer)}</td><td class="mono">${escapeHtml(c.fingerprint)}</td>
+    <td>${escapeHtml(c.valid_until.slice(0, 10))}</td>
+    <td>${pill(c.status, c.status === 'ACTIVE' ? 'ok' : 'bad')}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="muted">No certificate metadata registered.</td></tr>';
+
+  document.getElementById('allowlist').innerHTML = allowlist.map(e => `<tr>
+    <td class="mono">${escapeHtml(e.provider_id)}</td>
+    <td>${pill(e.environment, ENV_KIND[e.environment] || '')}</td>
+    <td class="mono">${escapeHtml(e.url)}</td><td>${escapeHtml(e.verified_by)}</td>
+    <td>${pill(e.is_active ? 'active' : 'inactive', e.is_active ? 'ok' : '')}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">No verified endpoints.</td></tr>';
+
+  document.getElementById('failures').innerHTML = (health.failures.recent || []).slice(-25).reverse()
+    .map(f => `<tr><td>${escapeHtml(f.action)}</td><td class="mono">${escapeHtml(f.entity_id)}</td>
+    <td class="muted">${escapeHtml((f.timestamp || '').replace('T', ' ').slice(0, 19))}</td>
+    <td class="muted">${escapeHtml(f.reason || '')}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">No recorded failures.</td></tr>';
+}
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('button[data-a]');
+  if (!button) return;
+  const id = button.dataset.id;
+  const path = '/integrations/' + encodeURIComponent(id);
+  const actions = {
+    validate: () => act(async () => {
+      const result = await api.post(path + '/validate-configuration');
+      toast(result.passed ? 'Configuration valid' : 'Failed: ' + result.failed_checks.join(', '),
+            result.passed ? 'ok' : 'err');
+    }, 'Configuration validated'),
+    tests: () => act(async () => {
+      const result = await api.post(path + '/contract-tests');
+      toast(`Contract tests: ${result.certification.result} — ` +
+            `${result.certification.tests_passed} passed, ${result.certification.tests_failed} failed, ` +
+            `${result.report.skipped} skipped`, result.certification.result === 'PASS' ? 'ok' : 'err');
+    }, 'Contract tests recorded'),
+    review: () => ask('Record security review', [
+      { name: 'reference', label: 'Review reference' },
+      { name: 'notes', label: 'Reviewer decision notes', type: 'textarea' },
+    ], (data) => act(() => api.post(path + '/approvals/SECURITY_REVIEW', data),
+                     'Security review recorded')),
+    approve: () => ask('Advance lifecycle', [
+      { name: 'target_status', label: 'Target status', value: 'DOCUMENTATION_VERIFIED' },
+      { name: 'reason', label: 'Reason', type: 'textarea' },
+    ], (data) => act(() => api.post(path + '/status', data), 'Lifecycle advanced')),
+    suspend: () => ask('Suspend integration', [{ name: 'reason', label: 'Reason', type: 'textarea' }],
+      (data) => act(() => api.post(path + '/suspend', data), 'Integration suspended')),
+    revoke: () => ask('Revoke integration (permanent)',
+      [{ name: 'reason', label: 'Reason', type: 'textarea' }],
+      (data) => act(() => api.post(path + '/revoke', data), 'Integration revoked')),
+  };
+  (actions[button.dataset.a] || (() => {}))();
+});
+
+renderModeBanners(document.getElementById('banners'));
+tokenBar(() => load().catch(e => toast(e.message, 'err')));
+</script>

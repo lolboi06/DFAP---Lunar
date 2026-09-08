@@ -1,0 +1,247 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>DFAP — Investigator Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/ldrm-console/static/console.css">
+<div id="banners"></div>
+<header>
+  <h1>DFAP — Investigator Console</h1>
+  <nav class="row"><a href="/ldrm-console/admin">Administration</a>
+  <a href="/provider-console">Provider</a></nav>
+  <div class="spacer"></div>
+  <div class="row" id="tokenbar"></div>
+</header>
+<main>
+  <div class="note">
+    This console shows request, authorization, dispatch and evidence state. It never displays API
+    secrets, client private keys, webhook signing keys or provider credentials — those are held as
+    references and resolved only in the backend at the moment of use.
+  </div>
+
+  <section>
+    <h2>New data request</h2>
+    <div class="tile">
+      <div class="row" style="align-items:flex-start; gap:16px">
+        <div style="flex:1; min-width:200px">
+          <label>Case</label><input id="case_id" value="CASE-2026-001">
+          <label>Provider</label><select id="provider_id"></select>
+          <label>Dataset</label>
+          <select id="dataset_type">
+            <option>BANK</option><option>CDR</option><option>IPDR</option><option>SOCIAL</option>
+          </select>
+        </div>
+        <div style="flex:1; min-width:200px">
+          <label>Target type</label>
+          <select id="target_type">
+            <option>BANK_ACCOUNT</option><option>PHONE_NUMBER</option><option>IP_ADDRESS</option>
+            <option>SOCIAL_HANDLE</option><option>UPI_ID</option><option>EMAIL</option>
+          </select>
+          <label>Target value (synthetic)</label><input id="target_value" value="ACC-SYNTH-0001">
+          <label>Requested categories (comma separated)</label>
+          <input id="categories" value="TRANSACTIONS">
+        </div>
+        <div style="flex:1; min-width:200px">
+          <label>From</label><input id="start_time" type="date">
+          <label>To</label><input id="end_time" type="date">
+          <label>Justification</label><textarea id="justification" rows="2">Synthetic demonstration scope</textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="validate">Validate scope</button>
+        <button id="create" class="primary">Create &amp; submit for review</button>
+        <span class="muted" style="font-size:12px">You cannot specify a provider endpoint.
+        Destinations are administrator-verified configuration.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Requests</h2>
+    <div class="wrap"><table>
+      <thead><tr>
+        <th>Request</th><th>Provider</th><th>Dataset</th><th>Submission</th><th>Environment</th>
+        <th>Integration status</th><th>Request status</th><th>Authorization</th><th>Dispatch</th>
+        <th>Provider reference</th><th>Provider query</th><th>Response</th><th>Evidence</th><th></th>
+      </tr></thead>
+      <tbody id="requests"><tr><td colspan="14" class="muted">Connect to load.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section id="detailSection" style="display:none">
+    <h2>Request detail</h2>
+    <div id="detail"></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script src="/ldrm-console/static/console.js"></script>
+<script>
+let PROVIDERS = [], INTEGRATIONS = [];
+
+const AUTH_KIND = (r) => {
+  if (!r.authorization) return ['not authorized', ''];
+  if (r.authorization.is_invalidated) return ['INVALIDATED', 'bad'];
+  if (r.authorization.digital_signature) return ['authorized + signed', 'ok'];
+  return ['authorized, unsigned', 'warn'];
+};
+
+async function load() {
+  [PROVIDERS, INTEGRATIONS] = await Promise.all([api.get('/providers'), api.get('/integrations')]);
+  document.getElementById('provider_id').innerHTML = PROVIDERS.map(p =>
+    `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category)})</option>`).join('');
+
+  const requests = await api.get('/requests');
+  const rows = await Promise.all(requests.map(async (r) => {
+    const integration = INTEGRATIONS.find(i => i.provider_id === r.provider_id) || {};
+    const provider = PROVIDERS.find(p => p.id === r.provider_id) || {};
+    let transmissions = [], responses = [], queries = [];
+    try { transmissions = await api.get(`/requests/${r.id}/transmissions`); } catch {}
+    try { responses = await api.get(`/requests/${r.id}/responses`); } catch {}
+    try { queries = await api.get(`/requests/${r.id}/queries`); } catch {}
+    const t = transmissions[transmissions.length - 1];
+    const response = responses[responses.length - 1];
+    const [authLabel, authKind] = AUTH_KIND(r);
+    const openQuery = queries.find(q => !q.response_text);
+    return `<tr>
+      <td class="mono">${escapeHtml(r.request_number)}<div class="muted" style="font-size:11px">v${r.request_version}</div></td>
+      <td>${escapeHtml(provider.name || r.provider_id)}</td>
+      <td>${escapeHtml(r.dataset_type)}</td>
+      <td>${escapeHtml(t ? t.transmission_method : (integration.submission_method || '—'))}</td>
+      <td>${integration.environment ? pill(integration.environment, ENV_KIND[integration.environment]) : pill('MOCK', 'mock')}</td>
+      <td>${integration.integration_status ? pill(integration.integration_status, STATUS_KIND[integration.integration_status] || '') : '<span class="muted">implicit mock</span>'}</td>
+      <td>${pill(r.status, r.status === 'REJECTED' ? 'bad' : (r.status === 'INGESTED' || r.status === 'CLOSED' ? 'ok' : ''))}</td>
+      <td>${pill(authLabel, authKind)}</td>
+      <td>${t ? pill(t.transmission_status, t.transmission_status === 'FAILED' ? 'bad' : 'ok') : '<span class="muted">not dispatched</span>'}</td>
+      <td class="mono">${escapeHtml(t && t.provider_tracking_ref || '—')}</td>
+      <td>${openQuery ? pill('awaiting reply', 'warn') : (queries.length ? pill('answered', 'ok') : '<span class="muted">—</span>')}</td>
+      <td>${response ? pill(response.provider_status, 'ok') : '<span class="muted">—</span>'}</td>
+      <td class="mono">${escapeHtml(response && response.evidence_id || '—')}</td>
+      <td><button data-open="${escapeHtml(r.id)}">Open</button></td></tr>`;
+  }));
+  document.getElementById('requests').innerHTML = rows.join('') ||
+    '<tr><td colspan="14" class="muted">No requests yet.</td></tr>';
+}
+
+async function openDetail(id) {
+  const [request, history, transmissions, responses, queries] = await Promise.all([
+    api.get('/requests/' + id), api.get(`/requests/${id}/history`),
+    api.get(`/requests/${id}/transmissions`), api.get(`/requests/${id}/responses`),
+    api.get(`/requests/${id}/queries`).catch(() => []),
+  ]);
+  const [authLabel, authKind] = AUTH_KIND(request);
+  const auth = request.authorization;
+  const response = responses[responses.length - 1];
+  let provenance = null;
+  if (response && response.evidence_id) {
+    provenance = await api.get('/evidence/' + encodeURIComponent(response.evidence_id) + '/provenance')
+      .catch(() => null);
+  }
+  document.getElementById('detailSection').style.display = '';
+  document.getElementById('detail').innerHTML = `
+    <div class="tile">
+      <div class="row"><strong class="mono">${escapeHtml(request.request_number)}</strong>
+        ${pill(request.status)} ${pill(authLabel, authKind)}
+        <div class="spacer"></div>
+        <button data-act="submit" data-id="${id}">Submit for review</button>
+        <button data-act="dispatch" data-id="${id}">Dispatch</button>
+        <button data-act="receive" data-id="${id}">Receive response</button>
+        <button data-act="verify" data-id="${id}">Verify evidence</button>
+      </div>
+      <p class="muted mono" style="font-size:12px">canonical hash ${escapeHtml(request.canonical_hash || '—')}</p>
+      ${auth ? `<p class="muted" style="font-size:12px">Authority ${escapeHtml(auth.authority_type)}
+        ${escapeHtml(auth.authority_reference)} — ${escapeHtml(auth.issuing_authority)},
+        bound to v${auth.bound_request_version}
+        ${auth.is_invalidated ? `<strong style="color:var(--danger)"> — INVALIDATED: ${escapeHtml(auth.invalidation_reason || '')}</strong>` : ''}</p>` : ''}
+      ${queries.length ? `<h4 style="margin-bottom:4px">Provider queries</h4>` + queries.map(q => `
+        <div class="note ${q.response_text ? '' : 'warn'}">
+          <div>${escapeHtml(q.query_text)}</div>
+          ${q.response_text
+            ? `<div class="muted" style="margin-top:5px">Answered: ${escapeHtml(q.response_text)}</div>`
+            : `<div class="row" style="margin-top:8px">
+                 <input id="qr-${q.id}" placeholder="Your response to the provider">
+                 <button data-answer="${escapeHtml(q.id)}" data-req="${id}">Send</button></div>`}
+        </div>`).join('') : ''}
+      ${provenance ? `<h4 style="margin-bottom:4px">Evidence provenance</h4>
+        <p class="mono" style="font-size:12px">${escapeHtml(provenance.provenance_summary)}</p>
+        <div class="steps">${provenance.chain.map(s => `<span class="step done">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
+      <h4 style="margin-bottom:4px">Audit history</h4>
+      <div class="wrap"><table><thead><tr><th>Action</th><th>Actor</th><th>When</th></tr></thead>
+        <tbody>${history.slice(-20).reverse().map(e => `<tr><td>${escapeHtml(e.action)}</td>
+        <td class="mono">${escapeHtml(e.actor_id)}</td>
+        <td class="muted">${escapeHtml((e.timestamp || '').replace('T',' ').slice(0,19))}</td></tr>`).join('')}</tbody>
+      </table></div>
+    </div>`;
+  document.getElementById('detailSection').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function act(fn, message) {
+  try { await fn(); toast(message, 'ok'); await load(); }
+  catch (error) { toast(error.message, 'err'); }
+}
+
+document.addEventListener('click', async (event) => {
+  const open = event.target.closest('button[data-open]');
+  if (open) return openDetail(open.dataset.open).catch(e => toast(e.message, 'err'));
+
+  const answer = event.target.closest('button[data-answer]');
+  if (answer) {
+    const text = document.getElementById('qr-' + answer.dataset.answer).value;
+    return act(() => api.post(`/requests/${answer.dataset.req}/queries/${answer.dataset.answer}/respond`,
+                              { response_text: text, scope_modified: false }),
+               'Response sent to provider');
+  }
+
+  const button = event.target.closest('button[data-act]');
+  if (!button) return;
+  const id = button.dataset.id;
+  const calls = {
+    submit: [() => api.post(`/requests/${id}/submit`), 'Submitted for legal review'],
+    dispatch: [() => api.post(`/requests/${id}/dispatch`, {}), 'Dispatched'],
+    receive: [() => api.post(`/requests/${id}/receive-response`), 'Response received'],
+  };
+  if (button.dataset.act === 'verify') {
+    const responses = await api.get(`/requests/${id}/responses`);
+    const last = responses[responses.length - 1];
+    if (!last) return toast('No response to verify', 'err');
+    return act(() => api.post(`/requests/${id}/responses/${last.id}/verify`, { accept_partial: false }),
+               'Evidence verified');
+  }
+  const [fn, message] = calls[button.dataset.act] || [];
+  if (fn) await act(fn, message);
+  if (['submit', 'dispatch', 'receive'].includes(button.dataset.act)) await openDetail(id);
+});
+
+document.getElementById('validate').onclick = () => act(async () => {
+  const result = await api.post('/advisory/minimize-scope', {
+    dataset_type: document.getElementById('dataset_type').value,
+    requested_categories: document.getElementById('categories').value.split(',').map(s => s.trim()),
+    start_time: new Date(document.getElementById('start_time').value || Date.now()).toISOString(),
+    end_time: new Date(document.getElementById('end_time').value || Date.now()).toISOString(),
+  });
+  toast('Scope advisory: ' + JSON.stringify(result).slice(0, 200));
+}, 'Scope validated');
+
+document.getElementById('create').onclick = () => act(async () => {
+  const request = await api.post('/requests', {
+    case_id: document.getElementById('case_id').value,
+    provider_id: document.getElementById('provider_id').value,
+    dataset_type: document.getElementById('dataset_type').value,
+    targets: [{
+      target_type: document.getElementById('target_type').value,
+      target_value: document.getElementById('target_value').value,
+      start_time: new Date(document.getElementById('start_time').value || Date.now() - 6e8).toISOString(),
+      end_time: new Date(document.getElementById('end_time').value || Date.now()).toISOString(),
+      requested_categories: document.getElementById('categories').value.split(',').map(s => s.trim()).filter(Boolean),
+      justification: document.getElementById('justification').value,
+    }],
+  });
+  await api.post(`/requests/${request.id}/submit`);
+}, 'Request created and submitted for legal review');
+
+const today = new Date().toISOString().slice(0, 10);
+document.getElementById('end_time').value = today;
+document.getElementById('start_time').value = new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10);
+
+renderModeBanners(document.getElementById('banners'));
+tokenBar(() => load().catch(e => toast(e.message, 'err')));
+</script>

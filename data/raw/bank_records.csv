@@ -1,0 +1,4 @@
+txn_id,timestamp,sender_acc,beneficiary_acc,amount,currency,sender_name,phone_number,ip_subnet
+BNK_9001,2026-09-01T10:10:00Z,ACC-1001,ACC-9999,2500.0,USD,S Roger,+1-555-0101,192.168.10.0/24
+BNK_9002,2026-09-01T10:30:00Z,ACC-2002,ACC-8888,10000.0,USD,Marc Wright,+1-555-0202,10.200.5.0/24
+BNK_BAD_1,2026-09-01T10:40:00Z,ACC-BAD,ACC-8888,-500.0,USD,Negative Money,+1-555-0000,10.0.0.0/24

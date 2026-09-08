@@ -1,0 +1,153 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Provider Compliance Portal — Mock Ecosystem</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/ldrm-console/static/console.css">
+<div class="banner demo">MOCK PROVIDER ECOSYSTEM — synthetic institution, synthetic data. Not a real provider.</div>
+<header>
+  <h1>Provider Compliance Portal</h1>
+  <div class="spacer"></div>
+  <div class="row">
+    <label style="margin:0">Signed in as</label>
+    <select id="role">
+      <option value="PROVIDER_REVIEWER">Compliance reviewer</option>
+      <option value="PROVIDER_SUPERVISOR">Compliance supervisor</option>
+    </select>
+    <button id="refresh" class="primary">Refresh</button>
+  </div>
+</header>
+<main>
+  <div class="note">
+    This portal belongs to the provider, not to the agency. It shows only the authorized request
+    packages this institution has received. It has no access to the DFAP entity graph, investigator
+    analytics, other providers, or any unrelated case.
+  </div>
+
+  <section>
+    <h2>Incoming authorized requests</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Provider reference</th><th>Agency reference</th><th>Case reference</th>
+      <th>Dataset</th><th>Categories</th><th>Package hash</th><th>Received</th><th>Status</th>
+      <th>Actions</th></tr></thead>
+      <tbody id="requests"><tr><td colspan="9" class="muted">Refresh to load.</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Institutional inbox</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Message</th><th>From</th><th>Subject</th><th>Sent</th></tr></thead>
+      <tbody id="inbox"></tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Outbound status callbacks</h2>
+    <div class="wrap"><table>
+      <thead><tr><th>Event</th><th>Reference</th><th>Type</th><th>Signature (HMAC-SHA256)</th><th>Sent</th></tr></thead>
+      <tbody id="webhooks"></tbody>
+    </table></div>
+  </section>
+</main>
+<div id="toast"></div>
+
+<script src="/ldrm-console/static/console.js"></script>
+<script>
+// The provider portal talks only to the provider API, on its own prefix and
+// with its own role header. It never carries an LDRM investigator token.
+const providerApi = {
+  async call(method, path, body) {
+    const response = await fetch('/provider-api/v1' + path, {
+      method,
+      headers: { 'Content-Type': 'application/json',
+                 'X-Provider-Role': document.getElementById('role').value },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    let payload; try { payload = text ? JSON.parse(text) : null; } catch { payload = { detail: text }; }
+    if (!response.ok) throw new Error((payload && payload.detail) || response.statusText);
+    return payload;
+  },
+  get(p) { return this.call('GET', p); },
+  post(p, b) { return this.call('POST', p, b === undefined ? {} : b); },
+};
+
+const STATUS = {
+  RECEIVED: '', UNDER_REVIEW: 'warn', CLARIFICATION_REQUIRED: 'warn',
+  REJECTED: 'bad', PROCESSING: '', COMPLETED: 'ok', ACCEPTED: 'ok',
+};
+
+function actionsFor(request) {
+  const id = request.provider_request_id;
+  const at = (s) => request.status === s;
+  return `<div class="row" style="gap:4px">
+    <button data-a="accept" data-id="${id}" ${at('RECEIVED') ? '' : 'disabled'}>Accept for review</button>
+    <button data-a="clarify" data-id="${id}" ${at('UNDER_REVIEW') ? '' : 'disabled'}>Request clarification</button>
+    <button data-a="reject" data-id="${id}" ${at('UNDER_REVIEW') || at('CLARIFICATION_REQUIRED') ? '' : 'disabled'}>Reject</button>
+    <button data-a="process" data-id="${id}" ${at('UNDER_REVIEW') || at('CLARIFICATION_REQUIRED') ? '' : 'disabled'}>Begin processing</button>
+    <button data-a="complete" data-id="${id}" class="primary" ${at('PROCESSING') ? '' : 'disabled'}>Generate response</button>
+  </div>`;
+}
+
+async function load() {
+  const [requests, inbox, webhooks] = await Promise.all([
+    providerApi.get('/requests'), providerApi.get('/inbox'), providerApi.get('/webhooks'),
+  ]);
+
+  document.getElementById('requests').innerHTML = requests.map(r => `<tr>
+    <td class="mono">${escapeHtml(r.provider_request_id)}</td>
+    <td class="mono">${escapeHtml(r.agency_request_reference)}</td>
+    <td class="mono">${escapeHtml(r.agency_case_reference)}</td>
+    <td>${escapeHtml(r.dataset_type)}</td>
+    <td>${escapeHtml((r.requested_record_categories || []).join(', '))}</td>
+    <td class="mono" title="${escapeHtml(r.request_package_hash || '')}">${escapeHtml((r.request_package_hash || '—').slice(0, 16))}…</td>
+    <td class="muted">${escapeHtml((r.received_at || '').replace('T', ' ').slice(0, 19))}</td>
+    <td>${pill(r.status, STATUS[r.status] || '')}
+        ${r.provider_notes ? `<div class="muted" style="font-size:11px">${escapeHtml(r.provider_notes)}</div>` : ''}</td>
+    <td>${actionsFor(r)}</td></tr>`).join('')
+    || '<tr><td colspan="9" class="muted">No incoming requests.</td></tr>';
+
+  document.getElementById('inbox').innerHTML = inbox.map(m => `<tr>
+    <td class="mono">${escapeHtml(m.message_id)}</td><td>${escapeHtml(m.sender)}</td>
+    <td>${escapeHtml(m.subject)}</td>
+    <td class="muted">${escapeHtml((m.sent_at || '').replace('T', ' ').slice(0, 19))}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="muted">Inbox empty.</td></tr>';
+
+  document.getElementById('webhooks').innerHTML = webhooks.map(w => `<tr>
+    <td class="mono">${escapeHtml(w.event_id)}</td>
+    <td class="mono">${escapeHtml(w.agency_request_reference)}</td>
+    <td>${escapeHtml(w.event_type)}</td>
+    <td class="mono">${escapeHtml((w.signature || '').slice(0, 24))}…</td>
+    <td class="muted">${escapeHtml((w.timestamp || '').replace('T', ' ').slice(0, 19))}</td></tr>`).join('')
+    || '<tr><td colspan="5" class="muted">No callbacks sent.</td></tr>';
+}
+
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-a]');
+  if (!button) return;
+  const id = encodeURIComponent(button.dataset.id);
+  try {
+    const action = button.dataset.a;
+    if (action === 'accept') await providerApi.post(`/requests/${id}/accept`);
+    if (action === 'process') await providerApi.post(`/requests/${id}/process`);
+    if (action === 'clarify') {
+      const query = prompt('What clarification does the institution require?');
+      if (!query) return;
+      await providerApi.post(`/requests/${id}/clarification`, { query_text: query });
+    }
+    if (action === 'reject') {
+      const reason = prompt('Reason for rejecting this request:');
+      if (!reason) return;
+      await providerApi.post(`/requests/${id}/reject`, { reason });
+    }
+    if (action === 'complete') {
+      await providerApi.post(`/requests/${id}/complete`, { scenario: 'VALID' });
+    }
+    toast('Recorded', 'ok');
+    await load();
+  } catch (error) { toast(error.message, 'err'); }
+});
+
+document.getElementById('refresh').onclick = () => load().catch(e => toast(e.message, 'err'));
+load().catch(() => {});
+</script>

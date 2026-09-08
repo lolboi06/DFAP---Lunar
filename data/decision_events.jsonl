@@ -1,0 +1,1 @@
+{"event_id": "13283d10-b233-4675-a481-76fe2f37ef7e", "event_type": "IDENTITY_REJECT", "timestamp": "2026-09-08T04:15:18.066750Z", "officer_id": "ofc1", "case_id": "c1", "entity_id": "e2", "previous_state": "POSSIBLE", "requested_state": "PENDING_SECOND_OFFICER_APPROVAL", "reason": "RED reject", "metadata": {"is_red_tier": true}}

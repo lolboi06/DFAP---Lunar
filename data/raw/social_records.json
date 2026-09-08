@@ -1,0 +1,24 @@
+[
+  {
+    "post_id": "SOC_7001",
+    "timestamp": "2026-09-01T10:02:00Z",
+    "user_handle": "@samroger_x",
+    "target_handle": "@tech_news",
+    "platform": "X/Twitter",
+    "actor_name": "Sam Roger X",
+    "phone_number": "+1-555-0101",
+    "ip_subnet": "192.168.10.0/24",
+    "device_id": "DEV_SAM_PHONE"
+  },
+  {
+    "post_id": "SOC_7002",
+    "timestamp": "2026-09-01T10:18:00Z",
+    "user_handle": "@mwright_sec",
+    "target_handle": "@cyber_daily",
+    "platform": "LinkedIn",
+    "actor_name": "Marcus Wright",
+    "phone_number": "+1-555-0202",
+    "ip_subnet": "10.200.5.0/24",
+    "device_id": "DEV_MARCUS_LAPTOP"
+  }
+]

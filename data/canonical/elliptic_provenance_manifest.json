@@ -1,0 +1,56 @@
+{
+  "dataset_key": "elliptic",
+  "name": "Elliptic++ Bitcoin Graph Dataset",
+  "version": "1.0-research",
+  "domain": "BANK",
+  "source_url": "https://github.com/git-disl/EllipticPlusPlus",
+  "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)",
+  "citation": "Weber et al., 'Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics', KDD 2019",
+  "provenance_tier": "SYNTHETIC_TEST_DATA",
+  "acquisition_timestamp": "2026-09-03T05:24:45.257789+00:00",
+  "source_files": [
+    "data/test_fixtures/elliptic/elliptic_txs.csv",
+    "data/test_fixtures/elliptic/elliptic_classes.csv"
+  ],
+  "source_file_hashes": {
+    "elliptic_txs.csv": "200f113fdf04646d8f4677e530c0af6f5f41c2858dbcd31ec105735024edd147",
+    "elliptic_classes.csv": "ca93d21e491b43f0cdbfb8106e7da8b0749464b926edbf3c2c0b595e420131f6"
+  },
+  "canonical_records_count": 3000,
+  "canonical_sha256": "e3bdff4dff72d0209527482866ef1c45f8723504d27e34a62d20641d47bb484e",
+  "time_range": "2026-01-15T12:03:10+00:00 -> 2026-01-29T10:53:55+00:00",
+  "schema_fingerprint": {
+    "columns": [
+      "txId",
+      "timestamp",
+      "epoch_time",
+      "input_wallet",
+      "output_wallet",
+      "amount_btc",
+      "amount_usd",
+      "fee_btc",
+      "timestep"
+    ],
+    "dtypes": {
+      "txId": "str",
+      "timestamp": "str",
+      "epoch_time": "float64",
+      "input_wallet": "str",
+      "output_wallet": "str",
+      "amount_btc": "float64",
+      "amount_usd": "float64",
+      "fee_btc": "float64",
+      "timestep": "int64"
+    }
+  },
+  "row_accountability": {
+    "source_file": "data/test_fixtures/elliptic/elliptic_txs.csv",
+    "source_rows": 3000,
+    "accepted_rows": 3000,
+    "rejected_rows": 0,
+    "is_accountable": true,
+    "rejection_breakdown": {},
+    "sample_rejections": []
+  },
+  "provenance_manifest_path": "data/canonical/elliptic_provenance_manifest.json"
+}

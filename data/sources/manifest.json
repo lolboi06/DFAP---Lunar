@@ -1,0 +1,87 @@
+{
+  "manifest_version": "2.0-research",
+  "registry_status": "AUTHENTIC_RESEARCH_ACQUISITION_LEDGER",
+  "datasets": {
+    "unsw": {
+      "name": "UNSW-NB15 Network Intrusion Dataset",
+      "dataset_key": "unsw",
+      "version": "2.0-research",
+      "domain": "IPDR",
+      "source_url": "https://raw.githubusercontent.com/princee1/UNSW_NB15-Data-analysis/master/UNSW_NB15_training-set.csv",
+      "alternate_url": "https://research.unsw.edu.au/projects/unsw-nb15-dataset",
+      "citation": "Moustafa, N. & Slay, J., 'UNSW-NB15: a comprehensive data set for network intrusion detection systems', MilCIS 2015",
+      "license": "Australian Centre for Cyber Security (ACCS) Research License",
+      "acquisition_timestamp": "2026-09-03T04:51:14Z",
+      "source_filename": "unsw_nb15_training-set.csv",
+      "source_path": "data/sources/unsw_nb15/unsw_nb15_training-set.csv",
+      "source_size_bytes": 32117676,
+      "source_sha256": "0ebd9eb06d53ae223fbe7948737985e851e00e9c20140508d653de4b1655fdd6",
+      "raw_record_count": 175341,
+      "expected_files": [
+        "data/sources/unsw_nb15/unsw_nb15_training-set.csv"
+      ],
+      "required_columns": [
+        "id",
+        "dur",
+        "proto",
+        "service",
+        "state",
+        "sbytes",
+        "dbytes",
+        "attack_cat",
+        "label"
+      ],
+      "provenance_tier": "REAL_PUBLIC_DATA"
+    },
+    "stackoverflow": {
+      "name": "Stack Overflow Temporal Interaction Network",
+      "dataset_key": "stackoverflow",
+      "version": "1.0-temporal",
+      "domain": "SOCIAL",
+      "source_url": "https://snap.stanford.edu/data/sx-stackoverflow-c2q.txt.gz",
+      "alternate_url": "https://snap.stanford.edu/data/sx-stackoverflow.html",
+      "citation": "Paranjape et al., 'Motifs in Temporal Networks', WSDM 2017",
+      "license": "Stanford Network Analysis Project (SNAP) Public Domain / CC0",
+      "acquisition_timestamp": "2026-09-03T04:51:37Z",
+      "source_filename": "sx_stackoverflow_c2q.txt",
+      "source_path": "data/sources/stackoverflow/sx_stackoverflow_c2q.txt",
+      "source_size_bytes": 442824,
+      "source_sha256": "10808eb3e092d29e2b93a15de4b8782e009d48fe3d23477f4b173c62399dafc2",
+      "raw_record_count": 20000,
+      "time_min": "2008-09-06T19:26:30+00:00",
+      "time_max": "2009-01-04T18:33:17+00:00",
+      "expected_files": [
+        "data/sources/stackoverflow/sx_stackoverflow_c2q.txt"
+      ],
+      "required_columns": [
+        "src_user_id",
+        "dst_user_id",
+        "timestamp"
+      ],
+      "provenance_tier": "REAL_PUBLIC_DATA"
+    },
+    "elliptic": {
+      "name": "Elliptic++ Bitcoin Graph Dataset",
+      "dataset_key": "elliptic",
+      "version": "1.0-research",
+      "domain": "BANK",
+      "source_url": "https://github.com/git-disl/EllipticPlusPlus",
+      "alternate_url": "https://www.kaggle.com/datasets/ellipticco/elliptic-data-set",
+      "citation": "Weber et al., 'Anti-Money Laundering in Bitcoin: Experimenting with Graph Convolutional Networks for Financial Forensics', KDD 2019",
+      "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)",
+      "acquisition_timestamp": "PENDING_OPERATOR_KAGGLE_DOWNLOAD",
+      "expected_files": [
+        "data/sources/elliptic/elliptic_txs.csv",
+        "data/sources/elliptic/elliptic_classes.csv"
+      ],
+      "required_columns": [
+        "txId",
+        "timestamp",
+        "input_wallet",
+        "output_wallet",
+        "amount_btc"
+      ],
+      "provenance_tier": "REAL_PUBLIC_DATA"
+    }
+  }
+}
